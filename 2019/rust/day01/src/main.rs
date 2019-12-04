@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::str::FromStr;
@@ -7,20 +8,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
 
     let file = File::open("input")?;
-    let result = read_input(file).map(get_fuel).sum::<u32>();
+    let result = read_input(file).map(get_fuel_partial).sum::<u64>();
     println!("Total fuel required: {}", result);
 
     Ok(())
 }
 
 
-fn read_input<T: Read>(input: T) -> impl Iterator<Item=u32> {
+fn read_input<T, K>(input: T) -> impl Iterator<Item=K>
+    where <K as std::str::FromStr>::Err: std::fmt::Display,
+          K: Display + FromStr,
+          T: Read
+{
     BufReader::new(input)
         .lines()
         .filter_map(|line| {
             match line {
                 Ok(line) => {
-                    match u32::from_str(&line) {
+                    println!("  Parsing: {}", line);
+                    match K::from_str(&line) {
                         Ok(val) => {
                             Some(val)
                         }
@@ -38,12 +44,16 @@ fn read_input<T: Read>(input: T) -> impl Iterator<Item=u32> {
         })
 }
 
-fn get_fuel(mass: u32) -> u32 {
-    let result = mass as f64 / 3 as f64;
-    (result.floor() - 2 as f64) as u32
+fn get_fuel(mass: u64) -> u64 {
+    let mut result = mass as f64 / 3 as f64;
+    result = result.floor() - 2.0;
+    if result < 0.0 {
+        return 0;
+    }
+    result as u64
 }
 
-fn get_fuel_partial(mut mass: u32) -> u32 {
+fn get_fuel_partial(mut mass: u64) -> u64 {
     let mut count = 0;
 
     loop {
@@ -51,13 +61,14 @@ fn get_fuel_partial(mut mass: u32) -> u32 {
         if mass_tmp <= 0.0 {
             break;
         } else {
-            count += mass_tmp as u32;
-            let tmp = get_fuel(mass) as f64 / 3.0 - 2.0;
+            count += mass_tmp as u64;
+            let mut tmp = get_fuel(mass) as f64 / 3.0 - 2.0;
+            tmp = tmp.floor();
             if tmp <= 0.0 {
                 break;
             }
-            count += tmp as u32;
-            mass = tmp as u32;
+            count += tmp as u64;
+            mass = tmp as u64;
         }
     }
 
